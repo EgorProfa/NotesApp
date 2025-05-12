@@ -41,7 +41,7 @@
             this.regLabel.AutoSize = true;
             this.regLabel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.regLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.regLabel.Location = new System.Drawing.Point(39, 291);
+            this.regLabel.Location = new System.Drawing.Point(57, 287);
             this.regLabel.Name = "regLabel";
             this.regLabel.Size = new System.Drawing.Size(199, 20);
             this.regLabel.TabIndex = 18;
@@ -55,7 +55,7 @@
             this.tbPassword.BackColor = System.Drawing.SystemColors.GradientInactiveCaption;
             this.tbPassword.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.tbPassword.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.tbPassword.Location = new System.Drawing.Point(43, 191);
+            this.tbPassword.Location = new System.Drawing.Point(61, 187);
             this.tbPassword.Name = "tbPassword";
             this.tbPassword.PasswordChar = '*';
             this.tbPassword.Size = new System.Drawing.Size(183, 26);
@@ -66,7 +66,7 @@
             this.tbLogin.BackColor = System.Drawing.SystemColors.GradientInactiveCaption;
             this.tbLogin.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.tbLogin.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.tbLogin.Location = new System.Drawing.Point(43, 100);
+            this.tbLogin.Location = new System.Drawing.Point(61, 96);
             this.tbLogin.Name = "tbLogin";
             this.tbLogin.Size = new System.Drawing.Size(183, 26);
             this.tbLogin.TabIndex = 16;
@@ -76,7 +76,7 @@
             this.btnLogin.BackColor = System.Drawing.SystemColors.ButtonShadow;
             this.btnLogin.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnLogin.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnLogin.Location = new System.Drawing.Point(43, 240);
+            this.btnLogin.Location = new System.Drawing.Point(61, 236);
             this.btnLogin.Name = "btnLogin";
             this.btnLogin.Size = new System.Drawing.Size(183, 35);
             this.btnLogin.TabIndex = 15;
@@ -88,7 +88,7 @@
             // 
             this.label2.AutoSize = true;
             this.label2.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label2.Location = new System.Drawing.Point(39, 158);
+            this.label2.Location = new System.Drawing.Point(57, 154);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(82, 20);
             this.label2.TabIndex = 14;
@@ -98,7 +98,7 @@
             // 
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(39, 62);
+            this.label1.Location = new System.Drawing.Point(57, 58);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(70, 20);
             this.label1.TabIndex = 13;
@@ -109,7 +109,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ActiveCaption;
-            this.ClientSize = new System.Drawing.Size(286, 380);
+            this.ClientSize = new System.Drawing.Size(306, 380);
             this.Controls.Add(this.regLabel);
             this.Controls.Add(this.tbPassword);
             this.Controls.Add(this.tbLogin);
