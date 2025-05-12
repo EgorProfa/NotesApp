@@ -10,9 +10,9 @@ using System.Windows.Forms;
 
 namespace NotesApp
 {
-    public partial class NotesApp : Form
+    public partial class NotesForm : Form
     {
-        public NotesApp()
+        public NotesForm()
         {
             InitializeComponent();
         }

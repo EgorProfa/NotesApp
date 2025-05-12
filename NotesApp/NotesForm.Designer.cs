@@ -1,6 +1,6 @@
 ﻿namespace NotesApp
 {
-    partial class NotesApp
+    partial class NotesForm
     {
         /// <summary>
         /// Обязательная переменная конструктора.
