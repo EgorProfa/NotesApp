@@ -228,6 +228,7 @@
             this.Controls.Add(this.tbNoteText);
             this.Controls.Add(this.tbNoteTitle);
             this.Controls.Add(this.notesTable);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.Name = "NotesForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;

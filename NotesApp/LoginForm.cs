@@ -116,9 +116,9 @@ namespace NotesApp
         /// </summary>
         private void regLabel_Click(object sender, EventArgs e)
         {
-            //RegistrationForm _registrationForm = new RegistrationForm(this);
+            RegistrationForm _registrationForm = new RegistrationForm(this);
             this.Hide();
-            //_registrationForm.Show();
+            _registrationForm.Show();
         }
     }
 }
