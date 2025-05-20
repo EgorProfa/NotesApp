@@ -96,10 +96,10 @@ namespace NotesApp
                 using (NpgsqlCommand _updateNoteCommand = new NpgsqlCommand(
                     "UPDATE notes SET title = @title, content = @content, " +
                     "last_changed_at = CURRENT_TIMESTAMP " +
-                    "WHERE note_id = @note_id AND author_id = @author_id", databaseConnection))
+                    "WHERE note_id = @note_id", databaseConnection))
                 {
                     _updateNoteCommand.Parameters.AddWithValue("@note_id", _noteId);
-                    _updateNoteCommand.Parameters.AddWithValue("@author_id", _userId);
+                    //_updateNoteCommand.Parameters.AddWithValue("@author_id", _userId);
                     _updateNoteCommand.Parameters.AddWithValue("@title", _title);
                     _updateNoteCommand.Parameters.AddWithValue("@content", _content);
 
@@ -136,6 +136,127 @@ namespace NotesApp
             catch (Exception ex)
             {
                 return (false, $"Ошибка при удалении заметки: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Проверяет, соответствует ли имя пользователя требованиям
+        /// </summary>
+        /// <param name="_username">Имя пользователя для проверки</param>
+        /// <returns>True если имя пользователя валидно, иначе False</returns>
+        public bool ValidateUsername(string _username)
+        {
+            if (string.IsNullOrWhiteSpace(_username) || _username.Length < 5 || _username.Length > 20)
+                return false;
+
+            foreach (char _character in _username)
+            {
+                if (!(char.IsLetterOrDigit(_character) && IsLatinLetter(_character)))
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Проверяет, является ли символ латинской буквой
+        /// </summary>
+        /// <param name="_character">Символ для проверки</param>
+        /// <returns>True если символ латинский, иначе False</returns>
+        private static bool IsLatinLetter(char _character)
+        {
+            return (_character >= 'A' && _character <= 'Z') || (_character >= 'a' && _character <= 'z');
+        }
+
+        /// <summary>
+        /// Проверяет валидность пароля по правилам базы данных
+        /// </summary>
+        /// <param name="password">Пароль для проверки</param>
+        /// <returns>True если пароль валиден, иначе False</returns>
+        public bool ValidatePassword(string password)
+        {
+            using (NpgsqlCommand command = new NpgsqlCommand(
+                "SELECT validate_password(@password)", databaseConnection))
+            {
+                command.Parameters.AddWithValue("@password", password);
+                return (bool)command.ExecuteScalar();
+            }
+        }
+
+        /// <summary>
+        /// Проверяет, существует ли пользователь с указанным логином
+        /// </summary>
+        /// <param name="username">Логин для проверки</param>
+        /// <returns>True если пользователь существует, иначе False</returns>
+        public bool UserExists(string username)
+        {
+            using (NpgsqlCommand command = new NpgsqlCommand(
+                "SELECT COUNT(*) FROM users WHERE username = @username", databaseConnection))
+            {
+                command.Parameters.AddWithValue("@username", username);
+                return (long)command.ExecuteScalar() > 0;
+            }
+        }
+
+        /// <summary>
+        /// Регистрирует нового пользователя
+        /// </summary>
+        /// <param name="username">Логин пользователя</param>
+        /// <param name="password">Пароль пользователя</param>
+        /// <returns>Кортеж с результатом операции (Success, Message)</returns>
+        public (bool Success, string Message) RegisterUser(string username, string password)
+        {
+            try
+            {
+                using (NpgsqlCommand command = new NpgsqlCommand(
+                    "INSERT INTO users (username, password_hash) VALUES (@username, crypt(@password, gen_salt('bf')))",
+                    databaseConnection))
+                {
+                    command.Parameters.AddWithValue("@username", username);
+                    command.Parameters.AddWithValue("@password", password);
+
+                    using (var transaction = databaseConnection.BeginTransaction())
+                    {
+                        try
+                        {
+                            int rowsAffected = command.ExecuteNonQuery();
+                            transaction.Commit();
+
+                            return rowsAffected > 0
+                                ? (true, "Вы успешно зарегистрировались!")
+                                : (false, "Не удалось зарегистрировать пользователя");
+                        }
+                        catch (Exception ex)
+                        {
+                            transaction.Rollback();
+                            return (false, $"Ошибка при регистрации: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Ошибка при регистрации: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Проверяет учетные данные пользователя
+        /// </summary>
+        /// <param name="username">Имя пользователя</param>
+        /// <param name="password">Пароль</param>
+        /// <returns>Имя пользователя при успешной аутентификации, иначе null</returns>
+        public string AuthenticateUser(string username, string password)
+        {
+            using (NpgsqlCommand command = new NpgsqlCommand(
+                "SELECT username FROM users WHERE username = @username AND password_hash = crypt(@password, password_hash)",
+                databaseConnection))
+            {
+                command.Parameters.AddWithValue("@username", username);
+                command.Parameters.AddWithValue("@password", password);
+
+                var result = command.ExecuteScalar();
+                return result != null ? Convert.ToString(result) : null;
             }
         }
 

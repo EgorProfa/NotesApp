@@ -26,54 +26,49 @@ namespace NotesApp
         /// </summary>
         private void ButtonLogin_Click(object sender, EventArgs e)
         {
-            string _inputUsername = tbLogin.Text.Trim();
-            string _inputPassword = tbPassword.Text.Trim();
+            string username = tbLogin.Text.Trim();
+            string password = tbPassword.Text.Trim();
 
-            if (string.IsNullOrEmpty(_inputUsername) || string.IsNullOrEmpty(_inputPassword))
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
                 MessageBox.Show("Введите логин и пароль", "Ошибка ввода",
                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            using (DatabaseService _databaseManager = new DatabaseService())
+            try
             {
-                try
+                using (DatabaseService dbService = new DatabaseService())
                 {
-                    // Проверка учетных данных
-                    using (NpgsqlCommand _authCommand = new NpgsqlCommand(
-                        "SELECT username FROM users WHERE username = @username AND password_hash = crypt(@password, password_hash)",
-                        _databaseManager.GetConnection()))
+                    // Аутентификация пользователя
+                    string authenticatedUsername = dbService.AuthenticateUser(username, password);
+
+                    if (authenticatedUsername != null)
                     {
-                        _authCommand.Parameters.AddWithValue("@username", _inputUsername);
-                        _authCommand.Parameters.AddWithValue("@password", _inputPassword);
+                        // Успешный вход
+                        this.Hide();
 
-                        var _authResult = _authCommand.ExecuteScalar();
+                        // Получаем ID пользователя (может пригодиться для NotesForm)
+                        int userId = DatabaseService.GetUserID(authenticatedUsername);
 
-                        if (_authResult != null && _authResult != DBNull.Value)
-                        {
-                            string _currentUserName = Convert.ToString(_authResult);
-
-                            // Успешная авторизация
-                            this.Hide();
-                            NotesForm notesForm = new NotesForm(_currentUserName);
-                            notesForm.FormClosed += (s, args) => this.Close();
-                            notesForm.Show();
-                        }
-                        else
-                        {
-                            MessageBox.Show("Неверный логин или пароль", "Ошибка авторизации",
-                                          MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            tbPassword.Clear();
-                            tbLogin.Clear();
-                        }
+                        NotesForm notesForm = new NotesForm(authenticatedUsername);
+                        notesForm.FormClosed += (s, args) => this.Close();
+                        notesForm.Show();
+                    }
+                    else
+                    {
+                        // Неудачная аутентификация
+                        MessageBox.Show("Неверный логин или пароль", "Ошибка авторизации",
+                                      MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        tbPassword.Clear();
+                        tbLogin.Clear();
                     }
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка при аутентификации: {ex.Message}",
-                                  "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при аутентификации: {ex.Message}",
+                              "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

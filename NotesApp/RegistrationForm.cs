@@ -76,114 +76,70 @@ namespace NotesApp
         }
 
         /// <summary>
-        /// Проверяет, соответствует ли имя пользователя требованиям
-        /// </summary>
-        /// <param name="_username">Имя пользователя для проверки</param>
-        /// <returns>True если имя пользователя валидно, иначе False</returns>
-        public static bool ValidateUsername(string _username)
-        {
-            if (string.IsNullOrWhiteSpace(_username))
-                return false;
-
-            foreach (char _character in _username)
-            {
-                if (!(char.IsLetterOrDigit(_character) && IsLatinLetter(_character)))
-                    return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Проверяет, является ли символ латинской буквой
-        /// </summary>
-        /// <param name="_character">Символ для проверки</param>
-        /// <returns>True если символ латинский, иначе False</returns>
-        private static bool IsLatinLetter(char _character)
-        {
-            return (_character >= 'A' && _character <= 'Z') || (_character >= 'a' && _character <= 'z');
-        }
-
-        /// <summary>
         /// Обработчик нажатия кнопки регистрации
         /// </summary>
         private void ButtonReg_Click(object sender, EventArgs e)
         {
-            string _login = tbRegLogin.Text.Trim();
-            string _password = tbRegPassword.Text;
+            // Получаем данные из полей ввода
+            string login = tbRegLogin.Text.Trim();
+            string password = tbRegPassword.Text;
 
-            if (string.IsNullOrWhiteSpace(_login) || _login.Length < 5 || _login.Length > 20 || ValidateUsername(_login))
+            if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
             {
-                MessageBox.Show("Логин должен содержать от 5 до 20 символов латинского алфавита и цифр", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Логин и пароль не могут быть пустыми",
+                               "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             try
             {
-                using (DatabaseService _databaseService = new DatabaseService())
+                using (DatabaseService dbService = new DatabaseService())
                 {
-                    // 1. Проверка валидности пароля
-                    using (NpgsqlCommand _checkPasswordCommand = new NpgsqlCommand(
-                        "SELECT validate_password(@password)", _databaseService.GetConnection()))
+                    // 1. Валидация логина
+                    if (dbService.ValidateUsername(login))
                     {
-                        _checkPasswordCommand.Parameters.AddWithValue("@password", _password);
-                        bool _isPasswordValid = (bool)_checkPasswordCommand.ExecuteScalar();
-
-                        if (!_isPasswordValid)
-                        {
-                            MessageBox.Show("Пароль не соответствует требованиям.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                            return;
-                        }
+                        MessageBox.Show("Логин должен содержать от 5 до 20 символов латинского алфавита и цифр",
+                                     "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
                     }
 
-                    // 2. Проверка уникальности логина
-                    using (NpgsqlCommand _checkUsernameCommand = new NpgsqlCommand(
-                        "SELECT COUNT(*) FROM users WHERE username = @username", _databaseService.GetConnection()))
+                    // 2. Проверка существования пользователя
+                    if (dbService.UserExists(login))
                     {
-                        _checkUsernameCommand.Parameters.AddWithValue("@username", _login);
-                        long _userCount = (long)_checkUsernameCommand.ExecuteScalar();
-
-                        if (_userCount > 0)
-                        {
-                            MessageBox.Show("Пользователь с таким логином уже существует", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                            return;
-                        }
+                        MessageBox.Show("Пользователь с таким логином уже существует",
+                                     "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
                     }
 
-                    // 3. Регистрация пользователя
-                    using (NpgsqlCommand _insertCommand = new NpgsqlCommand(
-                        "INSERT INTO users (username, password_hash) VALUES (@username, crypt(@password, gen_salt('bf')))",
-                        _databaseService.GetConnection()))
+                    // 3. Валидация пароля
+                    if (!dbService.ValidatePassword(password))
                     {
-                        _insertCommand.Parameters.AddWithValue("@username", _login);
-                        _insertCommand.Parameters.AddWithValue("@password", _password);
+                        MessageBox.Show("Пароль должен содержать:\n- Минимум 8 символов\n- Заглавные и строчные буквы\n- Цифры\n- Специальные символы",
+                                     "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
 
-                        using (var _transaction = _databaseService.GetConnection().BeginTransaction())
-                        {
-                            try
-                            {
-                                int _rowsAffected = _insertCommand.ExecuteNonQuery();
-                                _transaction.Commit();
+                    // 4. Регистрация пользователя
+                    var (success, message) = dbService.RegisterUser(login, password);
 
-                                if (_rowsAffected > 0)
-                                {
-                                    loginForm.Show();
-                                    this.Close();
-                                    MessageBox.Show("Вы успешно зарегистрировались!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                }
-                            }
-                            catch
-                            {
-                                _transaction.Rollback();
-                                throw;
-                            }
-                        }
+                    if (success)
+                    {
+                        // Успешная регистрация
+                        MessageBox.Show(message, "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        loginForm.Show();
+                        this.Close();
+                    }
+                    else
+                    {
+                        // Ошибка регистрации
+                        MessageBox.Show(message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
-            catch (NpgsqlException ex)
+            catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при регистрации: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Непредвиденная ошибка: {ex.Message}",
+                               "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
