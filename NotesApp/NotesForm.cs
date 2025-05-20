@@ -1,13 +1,6 @@
-﻿using Npgsql;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using System;
 using System.Data;
 using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace NotesApp
@@ -29,22 +22,45 @@ namespace NotesApp
         {
             InitializeComponent();
 
-            userName = _userName;
-            userId = DatabaseService.GetUserID(userName);
-            sessionId = Guid.NewGuid().ToString();
-            this.Text = $"Работа с заметками (пользователь: {_userName})";
+            this.userName = _userName;
+            this.Text = $"Работа с заметками (пользователь: {userName})";
 
-            // Создаем новую сессию для пользователя
-            if (!NewSession())
+            try
             {
-                MessageBox.Show("Вы уже вошли в систему с другого устройства", "Ошибка",
+                using (DatabaseService dbService = new DatabaseService())
+                {
+                    // Получаем ID пользователя
+                    userId = DatabaseService.GetUserID(userName);
+                    if (userId == -1)
+                    {
+                        MessageBox.Show("Ошибка получения данных пользователя", "Ошибка",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        this.Close();
+                        return;
+                    }
+
+                    // Создаем новую сессию
+                    sessionId = Guid.NewGuid().ToString();
+                    var (sessionSuccess, sessionMessage) = dbService.CreateSession(sessionId, userId);
+
+                    if (!sessionSuccess)
+                    {
+                        MessageBox.Show(sessionMessage, "Ошибка сессии",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        this.Close();
+                        return;
+                    }
+
+                    // Загрузка заметок
+                    LoadNotes();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка инициализации: {ex.Message}", "Ошибка",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 this.Close();
-                return;
             }
-
-            // Загрузка заметок в dataGridView
-            LoadNotes();
         }
 
         /// <summary>
@@ -52,65 +68,21 @@ namespace NotesApp
         /// </summary>
         private void NotesForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            UnregisterSession();
-        }
-
-        /// <summary>
-        /// Создает новую сессию пользователя
-        /// </summary>
-        /// <returns>True если сессия создана успешно, иначе False</returns>
-        private bool NewSession()
-        {
             try
             {
-                using (DatabaseService _databaseService = new DatabaseService())
+                using (DatabaseService dbService = new DatabaseService())
                 {
-                    using (NpgsqlCommand _сmd = new NpgsqlCommand(
-                        "INSERT INTO active_sessions (session_id, user_id, login_time) " +
-                        "VALUES (@session_id, @user_id, CURRENT_TIMESTAMP)",
-                        _databaseService.GetConnection()))
+                    var (success, message) = dbService.DeleteSession(sessionId);
+
+                    if (!success)
                     {
-                        _сmd.Parameters.AddWithValue("@session_id", sessionId);
-                        _сmd.Parameters.AddWithValue("@user_id", userId);
-                        _сmd.ExecuteNonQuery();
-                        return true;
+                        Debug.WriteLine($"Ошибка при закрытии сессии: {message}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка регистрации сессии: {ex.Message}",
-                              "Ошибка",
-                              MessageBoxButtons.OK,
-                              MessageBoxIcon.Error);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Удаляет сессию пользователя
-        /// </summary>
-        /// <returns>True если сессия удалена успешно, иначе False</returns>
-        private bool UnregisterSession()
-        {
-            try
-            {
-                using (DatabaseService _databaseService = new DatabaseService())
-                {
-                    using (NpgsqlCommand _cmd = new NpgsqlCommand(
-                        "DELETE FROM active_sessions WHERE session_id = @session_id",
-                        _databaseService.GetConnection()))
-                    {
-                        _cmd.Parameters.AddWithValue("@session_id", sessionId);
-                        int _affectedRows = _cmd.ExecuteNonQuery();
-                        return _affectedRows > 0;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Ошибка удаления сессии: {ex.Message}");
-                return false;
+                Debug.WriteLine($"Ошибка при закрытии формы: {ex.Message}");
             }
         }
 
@@ -122,36 +94,29 @@ namespace NotesApp
         /// Загружает заметки из базы данных с возможностью поиска
         /// </summary>
         /// <param name="_searchTerm">Термин для поиска заметок</param>
-        private void LoadNotes(string _searchTerm = null)
+        /// <summary>
+        /// Загружает заметки из базы данных с возможностью поиска
+        /// </summary>
+        /// <param name="searchTerm">Термин для поиска заметок</param>
+        private void LoadNotes(string searchTerm = null)
         {
             try
             {
+                // Очистка таблицы перед загрузкой новых данных
                 notesTable.DataSource = null;
                 notesTable.Columns.Clear();
 
-                using (DatabaseService _databaseService = new DatabaseService())
+                using (DatabaseService dbService = new DatabaseService())
                 {
-                    notesData = new DataTable();
-                    using (var _cmd = new NpgsqlCommand())
+                    // Получение данных через DatabaseService
+                    notesData = dbService.GetNotes(searchTerm);
+
+                    if (notesData == null)
                     {
-                        _cmd.Connection = _databaseService.GetConnection();
-                        _cmd.CommandText = @"SELECT n.note_id, n.title, n.content, n.created_at, n.last_changed_at, u.username, n.author_id FROM notes n JOIN users u ON n.author_id = u.user_id";
-
-                        if (!string.IsNullOrWhiteSpace(_searchTerm))
-                        {
-                            _cmd.CommandText += @" WHERE LOWER(n.title) LIKE @search 
-                                               OR LOWER(u.username) LIKE @search";
-                            _cmd.Parameters.AddWithValue("@search", $"%{_searchTerm.ToLower()}%");
-                        }
-
-                        _cmd.CommandText += " ORDER BY n.note_id";
-
-                        using (NpgsqlDataAdapter _adapter = new NpgsqlDataAdapter(_cmd))
-                        {
-                            _adapter.Fill(notesData);
-                        }
+                        throw new Exception("Не удалось получить данные из базы");
                     }
 
+                    // Настройка DataGridView
                     ConfigureDataGridView();
 
                     // Установка текущей заметки
@@ -169,7 +134,8 @@ namespace NotesApp
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка при загрузке заметок: {ex.Message}",
-                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                              "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ClearNoteFields();
             }
         }
 
@@ -457,17 +423,25 @@ namespace NotesApp
         {
             try
             {
-                UnregisterSession();
+                using (DatabaseService dbService = new DatabaseService())
+                {
+                    var (success, message) = dbService.DeleteSession(sessionId);
 
-                LoginForm _loginForm = new LoginForm();
-                _loginForm.FormClosed += (s, args) => this.Close();
-                _loginForm.Show();
-                this.Hide();
+                    if (!success)
+                    {
+                        Debug.WriteLine($"Ошибка при закрытии сессии: {message}");
+                    }
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при выходе из системы: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Debug.WriteLine($"Ошибка при закрытии формы: {ex.Message}");
             }
+
+            LoginForm _loginForm = new LoginForm();
+            _loginForm.FormClosed += (s, args) => this.Close();
+            _loginForm.Show();
+            this.Hide();
         }
 
         /// <summary>

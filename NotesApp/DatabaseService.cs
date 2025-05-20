@@ -1,5 +1,8 @@
 ﻿using Npgsql;
 using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace NotesApp
@@ -257,6 +260,126 @@ namespace NotesApp
 
                 var result = command.ExecuteScalar();
                 return result != null ? Convert.ToString(result) : null;
+            }
+        }
+
+        /// <summary>
+        /// Создает новую сессию пользователя
+        /// </summary>
+        /// <param name="sessionId">Идентификатор сессии</param>
+        /// <param name="userId">Идентификатор пользователя</param>
+        /// <returns>Кортеж с результатом операции (Success, Message)</returns>
+        public (bool Success, string Message) CreateSession(string sessionId, int userId)
+        {
+            try
+            {
+                using (NpgsqlCommand command = new NpgsqlCommand(
+                    "INSERT INTO active_sessions (session_id, user_id, login_time) " +
+                    "VALUES (@session_id, @user_id, CURRENT_TIMESTAMP)",
+                    databaseConnection))
+                {
+                    command.Parameters.AddWithValue("@session_id", sessionId);
+                    command.Parameters.AddWithValue("@user_id", userId);
+
+                    int affectedRows = command.ExecuteNonQuery();
+                    return affectedRows > 0
+                        ? (true, "Сессия успешно создана")
+                        : (false, "Не удалось создать сессию");
+                }
+            }
+            catch (NpgsqlException ex)
+            {
+                return (false, $"Ошибка базы данных при создании сессии: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Ошибка при создании сессии: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Удаляет сессию пользователя
+        /// </summary>
+        /// <param name="sessionId">Идентификатор сессии</param>
+        /// <returns>Кортеж с результатом операции (Success, Message)</returns>
+        public (bool Success, string Message) DeleteSession(string sessionId)
+        {
+            try
+            {
+                using (NpgsqlCommand command = new NpgsqlCommand(
+                    "DELETE FROM active_sessions WHERE session_id = @session_id",
+                    databaseConnection))
+                {
+                    command.Parameters.AddWithValue("@session_id", sessionId);
+                    int affectedRows = command.ExecuteNonQuery();
+                    return affectedRows > 0
+                        ? (true, "Сессия успешно удалена")
+                        : (false, "Сессия не найдена");
+                }
+            }
+            catch (NpgsqlException ex)
+            {
+                return (false, $"Ошибка базы данных при удалении сессии: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Ошибка при удалении сессии: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получает заметки из базы данных с возможностью поиска
+        /// </summary>
+        /// <param name="searchTerm">Термин для поиска (необязательный)</param>
+        /// <param name="userId">ID пользователя для фильтрации (необязательный)</param>
+        /// <returns>DataTable с результатами запроса или null при ошибке</returns>
+        public DataTable GetNotes(string searchTerm = null, int? userId = null)
+        {
+            try
+            {
+                using (NpgsqlCommand command = new NpgsqlCommand())
+                {
+                    command.Connection = databaseConnection;
+                    command.CommandText = @"
+                SELECT n.note_id, n.title, n.content, 
+                       n.created_at, n.last_changed_at, 
+                       u.username, n.author_id 
+                FROM notes n 
+                JOIN users u ON n.author_id = u.user_id";
+
+                    var conditions = new List<string>();
+
+                    if (!string.IsNullOrWhiteSpace(searchTerm))
+                    {
+                        conditions.Add(@"(LOWER(n.title) LIKE @search OR LOWER(u.username) LIKE @search)");
+                        command.Parameters.AddWithValue("@search", $"%{searchTerm.ToLower()}%");
+                    }
+
+                    if (userId.HasValue)
+                    {
+                        conditions.Add("n.author_id = @user_id");
+                        command.Parameters.AddWithValue("@user_id", userId.Value);
+                    }
+
+                    if (conditions.Count > 0)
+                    {
+                        command.CommandText += " WHERE " + string.Join(" AND ", conditions);
+                    }
+
+                    command.CommandText += " ORDER BY n.note_id";
+
+                    DataTable result = new DataTable();
+                    using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
+                    {
+                        adapter.Fill(result);
+                    }
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Ошибка при получении заметок: {ex.Message}");
+                return null;
             }
         }
 
