@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35919.96 d17.13
+VisualStudioVersion = 17.13.35919.96
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotesApp", "NotesApp\NotesApp.csproj", "{00E59888-D149-4344-BFE1-3F1C3FD4996C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test-Cases", "Test-Cases\Test-Cases.csproj", "{B60A4DAB-529E-4218-85A6-E793DB7385B3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{00E59888-D149-4344-BFE1-3F1C3FD4996C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00E59888-D149-4344-BFE1-3F1C3FD4996C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{00E59888-D149-4344-BFE1-3F1C3FD4996C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B60A4DAB-529E-4218-85A6-E793DB7385B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B60A4DAB-529E-4218-85A6-E793DB7385B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B60A4DAB-529E-4218-85A6-E793DB7385B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B60A4DAB-529E-4218-85A6-E793DB7385B3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

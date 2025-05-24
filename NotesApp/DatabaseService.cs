@@ -384,6 +384,39 @@ namespace NotesApp
         }
 
         /// <summary>
+        /// Получает последнюю запись аудита для указанного пользователя
+        /// </summary>
+        /// <param name="userId">ID пользователя</param>
+        /// <returns>DataRow с последней записью аудита или null</returns>
+        public DataRow GetLastAuditRecord(int userId)
+        {
+            try
+            {
+                using (NpgsqlCommand command = new NpgsqlCommand(
+                    "SELECT * FROM notes_audit " +
+                    "WHERE user_id = @user_id " +
+                    "ORDER BY time DESC " +
+                    "LIMIT 1", databaseConnection))
+                {
+                    command.Parameters.AddWithValue("@user_id", userId);
+
+                    DataTable result = new DataTable();
+                    using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
+                    {
+                        adapter.Fill(result);
+                    }
+
+                    return result.Rows.Count > 0 ? result.Rows[0] : null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Ошибка при получении записи аудита: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Реализация интерфейса IDisposable
         /// </summary>
         public void Dispose()
