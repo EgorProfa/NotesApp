@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using DatabaseLibrary;
+using Npgsql;
 using System;
 using System.Drawing;
 using System.Windows.Forms;

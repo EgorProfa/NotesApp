@@ -1,6 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using NotesApp;
-using System;
+﻿using DatabaseLibrary;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Data;
 using System.Diagnostics;
 
@@ -22,7 +21,6 @@ namespace Test_Cases
         [TestCleanup]
         public void TestCleanup()
         {
-            // Удаляем тестовую заметку, если она осталась
             if (_testNoteId > 0)
             {
                 dbService.DeleteNote(_testNoteId, DatabaseService.GetUserID("test1"));
@@ -30,8 +28,7 @@ namespace Test_Cases
         }
 
         [TestMethod]
-        [DataRow("test1", "Новая заметка", "новый текст",
-                DisplayName = "Создание записи о создании заметки")]
+        [DataRow("test1", "Новая заметка", "новый текст")]
         public void TC_4_1_AuditCreateNote(string login, string title, string content)
         {
             var (success, message, noteId) = dbService.CreateNote(DatabaseService.GetUserID(login), title, content);
@@ -45,11 +42,8 @@ namespace Test_Cases
         }
 
         [TestMethod]
-        [DataRow("test1", "Тестовая заметка", "Изначальный текст",
-                "Обновленный заголовок", "Обновленный текст",
-                DisplayName = "Создание записи о изменении заметки")]
-        public void TC_4_2_AuditUpdateNote(string login, string initialTitle,
-                                          string initialContent, string updatedTitle, string updatedContent)
+        [DataRow("test1", "Тестовая заметка", "Изначальный текст", "Обновленный заголовок", "Обновленный текст"]
+        public void TC_4_2_AuditUpdateNote(string login, string initialTitle, string initialContent, string updatedTitle, string updatedContent)
         {
             var (createSuccess, _, noteId) = dbService.CreateNote(DatabaseService.GetUserID(login), initialTitle, initialContent);
             Assert.IsTrue(createSuccess, "Не удалось создать тестовую заметку");
@@ -65,8 +59,7 @@ namespace Test_Cases
         }
 
         [TestMethod]
-        [DataRow("test1", "Заметка для удаления", "Текст заметки",
-                DisplayName = "Создание записи о удалении заметки")]
+        [DataRow("test1", "Заметка для удаления", "Текст заметки")]
         public void TC_4_3_AuditDeleteNote(string login, string title, string content)
         {
             var (createSuccess, _, noteId) = dbService.CreateNote(DatabaseService.GetUserID(login), title, content);

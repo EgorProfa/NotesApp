@@ -3,9 +3,12 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace NotesApp
+namespace DatabaseLibrary
 {
     /// <summary>
     /// Класс для работы с базой данных PostgreSQL

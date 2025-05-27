@@ -1,9 +1,7 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using NotesApp;
+﻿using DatabaseLibrary;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Npgsql;
-using System;
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 
 namespace Test_Cases
 {
