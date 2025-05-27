@@ -66,6 +66,8 @@ namespace NotesApp
         {
             try
             {
+                if (string.IsNullOrEmpty(_title))
+                    return (false, "Заголовок заметки не может быть пустым", null);
                 using (NpgsqlCommand _createNoteCommand = new NpgsqlCommand(
                     "INSERT INTO notes (author_id, title, content) " +
                     "VALUES (@author_id, @title, @content) RETURNING note_id", databaseConnection))

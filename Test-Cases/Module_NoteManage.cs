@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NotesApp;
 using System;
+using System.Data;
 using System.Diagnostics;
 
 namespace Test_Cases
@@ -38,15 +39,12 @@ namespace Test_Cases
         public void TC_3_1_TestNoteCreation(string user, string title, string content, bool expectedSuccess)
         {
             var (success, message, noteId) = dbService.CreateNote(DatabaseService.GetUserID(user), title, content);
-
-            if (success)
-            {
-                lastNoteId = noteId;
-                lastAuthorId = user;
-            } 
-
+                
             Assert.AreEqual(expectedSuccess, success, message);
             Trace.WriteLine(message);
+
+            lastNoteId = noteId;
+            lastAuthorId = user;
         }
 
         [DataTestMethod]
@@ -104,6 +102,40 @@ namespace Test_Cases
             var (success, message) = dbService.DeleteNote(noteId.Value, DatabaseService.GetUserID(user));
             Assert.IsFalse(success, message);
             Trace.WriteLine(message);
+
+            lastNoteId = noteId;
+            lastAuthorId = author;
+        }
+
+        [DataTestMethod]
+        [DataRow("test5", "Искомая заметка", "Текст")]
+        public void TC_3_6_TestSearchByAuthor(string author, string title, string content)
+        {
+            var (_, _, noteId) = dbService.CreateNote(DatabaseService.GetUserID(author), title, content);
+
+            DataTable result = dbService.GetNotes(null, DatabaseService.GetUserID(author));
+
+            Assert.IsNotNull(result, "Результат поиска не должен быть null");
+            Assert.IsTrue(result.Rows.Count == 1, "Должна вернуться 1 заметка автора");
+
+            Trace.WriteLine($"Найдено заметок автора: {result.Rows.Count}");
+
+            lastNoteId = noteId;
+            lastAuthorId = author;
+        }
+
+        [DataTestMethod]
+        [DataRow("test5", "Искомая заметка", "Текст")]
+        public void TC_3_7_TestSearchByTitle(string author, string title, string content)
+        {
+            var (_, _, noteId) = dbService.CreateNote(DatabaseService.GetUserID(author), title, content);
+
+            DataTable result = dbService.GetNotes(title, null);
+
+            Assert.IsNotNull(result, "Результат поиска не должен быть null");
+            Assert.IsTrue(result.Rows.Count == 1, "Должна вернуться 1 заметка автора");
+
+            Trace.WriteLine($"Найдена заметка по заголовку: {result.Rows.Count}");
 
             lastNoteId = noteId;
             lastAuthorId = author;
