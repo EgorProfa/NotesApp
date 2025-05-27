@@ -1,9 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NotesApp;
-using System;
 using System.Data;
-using System.Diagnostics;
-
 
 namespace Test_Cases
 {
@@ -16,12 +13,6 @@ namespace Test_Cases
         public void TestInitialize()
         {
             dbService = new DatabaseService();
-        }
-
-        [TestCleanup]
-        public void TestCleanup()
-        {
-            dbService.Dispose();
         }
 
         [DataTestMethod]
