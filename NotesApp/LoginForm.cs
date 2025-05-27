@@ -41,17 +41,17 @@ namespace NotesApp
                 using (DatabaseService dbService = new DatabaseService())
                 {
                     // Аутентификация пользователя
-                    string authenticatedUsername = dbService.AuthenticateUser(username, password);
+                    var authenticatedUsername = dbService.AuthenticateUser(username, password);
 
-                    if (authenticatedUsername != null)
+                    if (authenticatedUsername.Success)
                     {
                         // Успешный вход
                         this.Hide();
 
                         // Получаем ID пользователя (может пригодиться для NotesForm)
-                        int userId = DatabaseService.GetUserID(authenticatedUsername);
+                        int userId = DatabaseService.GetUserID(username);
 
-                        NotesForm notesForm = new NotesForm(authenticatedUsername);
+                        NotesForm notesForm = new NotesForm(username);
                         notesForm.FormClosed += (s, args) => this.Close();
                         notesForm.Show();
                     }

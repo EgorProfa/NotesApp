@@ -80,7 +80,7 @@ namespace NotesApp
             }
             catch (Exception ex)
             {
-                return (false, $"Ошибка при создании заметки: {ex.Message}", null);
+                return (false, $"Ошибка при создании заметки: {ex.Message}", 0);
             }
         }
 
@@ -133,7 +133,7 @@ namespace NotesApp
                     _deleteNoteCommand.Parameters.AddWithValue("@author_id", _userId);
 
                     int _affectedRows = _deleteNoteCommand.ExecuteNonQuery();
-                    return _affectedRows > 0 ? (true, "Заметка успешно удалена") : (false, "Заметка не найдена");
+                    return _affectedRows > 0 ? (true, "Заметка успешно удалена") : (false, "Вы не являетесь автором заметки");
                 }
             }
             catch (Exception ex)
@@ -154,7 +154,7 @@ namespace NotesApp
 
             foreach (char _character in _username)
             {
-                if (!(char.IsLetterOrDigit(_character) && IsLatinLetter(_character)))
+                if (!(char.IsLetterOrDigit(_character) || IsLatinLetter(_character)))
                     return false;
             }
 
@@ -209,37 +209,47 @@ namespace NotesApp
         /// <returns>Кортеж с результатом операции (Success, Message)</returns>
         public (bool Success, string Message) RegisterUser(string username, string password)
         {
-            try
+            // Проверка логина
+            if (!ValidateUsername(username))
             {
-                using (NpgsqlCommand command = new NpgsqlCommand(
-                    "INSERT INTO users (username, password_hash) VALUES (@username, crypt(@password, gen_salt('bf')))",
-                    databaseConnection))
+                return (false, "Логин должен содержать от 5 до 20 символов латинского алфавита и цифр");
+            }
+
+            // Проверка пароля
+            if (!ValidatePassword(password))
+            {
+                return (false, "Пароль должен содержать:\n - Минимум 8 символов\n - Заглавные и строчные буквы\n - Цифры\n - Специальные символы");
+            }
+
+            using (NpgsqlCommand command = new NpgsqlCommand(
+                "INSERT INTO users (username, password_hash) VALUES (@username, crypt(@password, gen_salt('bf')))",
+                databaseConnection))
+            {
+                command.Parameters.AddWithValue("@username", username);
+                command.Parameters.AddWithValue("@password", password);
+
+                using (var transaction = databaseConnection.BeginTransaction())
                 {
-                    command.Parameters.AddWithValue("@username", username);
-                    command.Parameters.AddWithValue("@password", password);
-
-                    using (var transaction = databaseConnection.BeginTransaction())
+                    try
                     {
-                        try
-                        {
-                            int rowsAffected = command.ExecuteNonQuery();
-                            transaction.Commit();
+                        int rowsAffected = command.ExecuteNonQuery();
+                        transaction.Commit();
 
-                            return rowsAffected > 0
-                                ? (true, "Вы успешно зарегистрировались!")
-                                : (false, "Не удалось зарегистрировать пользователя");
-                        }
-                        catch (Exception ex)
-                        {
-                            transaction.Rollback();
-                            return (false, $"Ошибка при регистрации: {ex.Message}");
-                        }
+                        return rowsAffected > 0
+                            ? (true, "Вы успешно зарегистрировались!")
+                            : (false, "Не удалось зарегистрировать пользователя");
+                    }
+                    catch (PostgresException ex) when (ex.SqlState == "23505") // Ошибка уникальности
+                    {
+                        transaction.Rollback();
+                        return (false, "Пользователь с таким логином уже существует");
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        return (false, $"Ошибка при регистрации: {ex.Message}");
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                return (false, $"Ошибка при регистрации: {ex.Message}");
             }
         }
 
@@ -248,18 +258,61 @@ namespace NotesApp
         /// </summary>
         /// <param name="username">Имя пользователя</param>
         /// <param name="password">Пароль</param>
-        /// <returns>Имя пользователя при успешной аутентификации, иначе null</returns>
-        public string AuthenticateUser(string username, string password)
+        /// <returns>Кортеж с результатом операции (Success, Message)</returns>
+        public (bool Success, int? UserId, string Message) AuthenticateUser(string username, string password)
         {
-            using (NpgsqlCommand command = new NpgsqlCommand(
-                "SELECT username FROM users WHERE username = @username AND password_hash = crypt(@password, password_hash)",
-                databaseConnection))
+            try
             {
-                command.Parameters.AddWithValue("@username", username);
-                command.Parameters.AddWithValue("@password", password);
+                using (var cmd = new NpgsqlCommand(
+                    "SELECT user_id FROM users WHERE username = @username AND password_hash = crypt(@password, password_hash)",
+                    GetConnection()))
+                {
+                    cmd.Parameters.AddWithValue("@username", username);
+                    cmd.Parameters.AddWithValue("@password", password);
 
-                var result = command.ExecuteScalar();
-                return result != null ? Convert.ToString(result) : null;
+                    var result = cmd.ExecuteScalar();
+
+                    if (result != null && result != DBNull.Value)
+                    {
+                        int userId = Convert.ToInt32(result);
+                        return (true, userId, "Аутентификация успешна");
+                    }
+                    return (false, null, "Неверный логин или пароль");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, $"Ошибка при аутентификации: {ex.Message}");
+            }
+        }
+        public (bool Success, int? UserId, string Message, string sessionId) AuthenticateUserWithSession(string username, string password)
+        {
+            try
+            {
+                using (var cmd = new NpgsqlCommand(
+                    "SELECT user_id FROM users WHERE username = @username AND password_hash = crypt(@password, password_hash)",
+                    GetConnection()))
+                {
+                    cmd.Parameters.AddWithValue("@username", username);
+                    cmd.Parameters.AddWithValue("@password", password);
+
+                    var result = cmd.ExecuteScalar();
+
+                    if (result != null && result != DBNull.Value)
+                    {
+                        int userId = Convert.ToInt32(result);
+                        string sessionId = Guid.NewGuid().ToString();
+                        var session = CreateSession(sessionId, GetUserID(username));
+                        if (session.Success)
+                            return (true, userId, "Аутентификация успешна", sessionId);
+                        else return (false, null, "Сессия текущего пользователя уже существует", null);
+                    }
+                    return (false, null, "Неверный логин или пароль", null);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, $"Ошибка при аутентификации: {ex.Message}", null);
             }
         }
 
@@ -413,6 +466,90 @@ namespace NotesApp
             {
                 Debug.WriteLine($"Ошибка при получении записи аудита: {ex.Message}");
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Очищает таблицу сессий
+        /// </summary>
+        /// <returns>Кортеж с результатом операции (Success, Message)</returns>
+        public (bool Success, string Message) ClearSession()
+        {
+            try
+            {
+                using (NpgsqlCommand command = new NpgsqlCommand(
+                    "TRUNCATE TABLE active_sessions RESTART IDENTITY",
+                    databaseConnection))
+                {
+                    command.ExecuteNonQuery();
+                    return (true, "Таблица аудита успешно очищена");
+                }
+            }
+            catch (NpgsqlException ex)
+            {
+                return (false, $"Ошибка базы данных при очистке таблицы аудита: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Ошибка при очистке таблицы аудита: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Удаляет пользователя по имени
+        /// </summary>
+        /// <param name="username">Имя пользователя для удаления</param>
+        /// <returns>Кортеж с результатом операции (Success, Message)</returns>
+        public (bool Success, string Message) DeleteUser(string username)
+        {
+            try
+            {
+                using (NpgsqlCommand command = new NpgsqlCommand())
+                {
+                    command.Connection = databaseConnection;
+
+                    using (var transaction = databaseConnection.BeginTransaction())
+                    {
+                        try
+                        {
+                            // 1. Удаляем связанные записи (сессии, заметки и т.д.)
+                            command.CommandText = @"
+                        DELETE FROM active_sessions 
+                        WHERE user_id = (SELECT user_id FROM users WHERE username = @username)";
+                            command.Parameters.AddWithValue("@username", username);
+                            command.ExecuteNonQuery();
+
+                            // 2. Удаляем заметки пользователя
+                            command.CommandText = @"
+                        DELETE FROM notes 
+                        WHERE author_id = (SELECT user_id FROM users WHERE username = @username)";
+                            command.ExecuteNonQuery();
+
+                            // 3. Удаляем самого пользователя
+                            command.CommandText = "DELETE FROM users WHERE username = @username";
+                            int affectedRows = command.ExecuteNonQuery();
+
+                            transaction.Commit();
+
+                            return affectedRows > 0
+                                ? (true, "Пользователь успешно удален")
+                                : (false, "Пользователь не найден");
+                        }
+                        catch (Exception ex)
+                        {
+                            transaction.Rollback();
+                            return (false, $"Ошибка при удалении пользователя: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            catch (NpgsqlException ex)
+            {
+                return (false, $"Ошибка базы данных: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Непредвиденная ошибка: {ex.Message}");
             }
         }
 
