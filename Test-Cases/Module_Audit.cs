@@ -42,7 +42,7 @@ namespace Test_Cases
         }
 
         [TestMethod]
-        [DataRow("test1", "Тестовая заметка", "Изначальный текст", "Обновленный заголовок", "Обновленный текст"]
+        [DataRow("test1", "Тестовая заметка", "Изначальный текст", "Обновленный заголовок", "Обновленный текст")]
         public void TC_4_2_AuditUpdateNote(string login, string initialTitle, string initialContent, string updatedTitle, string updatedContent)
         {
             var (createSuccess, _, noteId) = dbService.CreateNote(DatabaseService.GetUserID(login), initialTitle, initialContent);

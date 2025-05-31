@@ -559,6 +559,20 @@ namespace DatabaseLibrary
         }
 
         /// <summary>
+        /// Получение хеша пароля по имени пользователя
+        /// </summary>
+        /// <param name="username">Имя пользователя</param>
+        /// <returns>Хеш пароля</returns>
+        public string GetPasswordHash(string username)
+        {
+            using (var cmd = new NpgsqlCommand("SELECT password_hash FROM users WHERE username = @username", GetConnection()))
+            {
+                cmd.Parameters.AddWithValue("@username", username);
+                return cmd.ExecuteScalar()?.ToString();
+            }
+        }
+
+        /// <summary>
         /// Реализация интерфейса IDisposable
         /// </summary>
         public void Dispose()

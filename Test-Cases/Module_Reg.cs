@@ -35,7 +35,7 @@ namespace Test_Cases
         [DataRow("test37", "Iwoudnt1234t!!!", true, DisplayName = "Валидные логин и пароль")]
         [DataRow("", "", false, DisplayName = "Пустые логин и пароль")]
         [DataRow("test1", "TestPassword123!", false, DisplayName = "Уже зарегистрированный пользователь")]
-        public void TC_2_1_TestRegistration(string username, string password, bool expectedSuccess)
+        public void TC_1_1_TestRegistration(string username, string password, bool expectedSuccess)
         {
             var (success, message) = dbService.RegisterUser(username, password);
 
@@ -50,26 +50,19 @@ namespace Test_Cases
 
         [DataTestMethod]
         [DataRow("hashTestUser", "Test1234!Password")]
-        public void TC_2_2_TestPasswordHashing(string username, string password)
+        public void TC_1_2_TestPasswordHashing(string username, string password)
         {
             var (success, message) = dbService.RegisterUser(username, password);
             Assert.IsTrue(success, $"Регистрация не удалась: {message}");
             _lastRegisteredUser = username;
 
-            string storedHash = GetPasswordHash(username);
+            string storedHash = dbService.GetPasswordHash(username);
 
             Assert.IsNotNull(storedHash, "Хеш не найден в базе");
             Assert.AreNotEqual(password, storedHash, "Пароль не должен храниться в открытом виде");
             Trace.WriteLine("Пароль успешно хэшируется");
         }
 
-        public string GetPasswordHash(string username)
-        {
-            using (var cmd = new NpgsqlCommand("SELECT password_hash FROM users WHERE username = @username", dbService.GetConnection()))
-            {
-                cmd.Parameters.AddWithValue("@username", username);
-                return cmd.ExecuteScalar()?.ToString();
-            }
-        }
+        
     }
 }
